@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useCallback, useContext, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { api } from '../services/api';
 import { Product, Stock } from '../types';
@@ -22,6 +22,8 @@ interface CartContextData {
 const CartContext = createContext<CartContextData>({} as CartContextData);
 
 export function CartProvider({ children }: CartProviderProps): JSX.Element {
+    const previousCartRef = useRef<Product[]>();
+
     const [cart, setCart] = useState<Product[]>(() => {
         const storagedCart = localStorage.getItem('@RocketShoes:cart');
 
@@ -32,9 +34,19 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
         return [];
     });
 
+    useEffect(() => {
+        previousCartRef.current = cart;
+    });
+
+    const cartPreviousValue = previousCartRef.current ?? cart;
+
+    useEffect(() => {
+        cartPreviousValue !== cart && localStorage.setItem('@RocketShoes:cart', JSON.stringify(cart));
+    }, [cart, cartPreviousValue]);
+
     const addProduct = async (productId: number) => {
         try {
-            const updatedCart = cart.map(product => ({...product}))
+            const updatedCart = cart.map(product => ({ ...product }))
 
             const productExists = updatedCart.find(product => product.id === productId);
 
@@ -59,7 +71,6 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
             }
 
             setCart(updatedCart);
-            localStorage.setItem('@RocketShoes:cart', JSON.stringify(updatedCart));
         } catch {
             toast.error('Erro na adição do produto');
         }
@@ -67,7 +78,7 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
 
     const removeProduct = (productId: number) => {
         try {
-            const updatedCart = cart.map(product => ({...product}))
+            const updatedCart = cart.map(product => ({ ...product }))
 
             const productIndex = updatedCart.findIndex(product => product.id === productId);
 
@@ -75,8 +86,6 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
             if (productIndex >= 0) {
                 updatedCart.splice(productIndex, 1);
                 setCart(updatedCart);
-
-                localStorage.setItem('@RocketShoes:cart', JSON.stringify(updatedCart));
             } else {
                 throw Error();
             }
@@ -101,14 +110,13 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
                 return;
             }
 
-            const updatedCart = cart.map(product => ({...product}))
+            const updatedCart = cart.map(product => ({ ...product }))
 
             const productExists = updatedCart.find(product => product.id === productId);
 
             if (productExists) {
                 productExists.amount = amount;
                 setCart(updatedCart);
-                localStorage.setItem('@RocketShoes:cart', JSON.stringify(updatedCart));
             } else {
                 throw Error();
             }
